@@ -48,10 +48,7 @@ echo_message "* Installing Files"
 
 git clone https://github.com/hydren-dev/HydraDAEMON && mv HydraDAEMON node && cd node && npm install
 
-echo " paste your configure"
+echo "* paste your configure"
 
-echo " node ."
+echo "* node ."
 
-
-
-echo "* Skyport Installed and Started on Port 3001"
