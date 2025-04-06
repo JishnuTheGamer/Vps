@@ -44,7 +44,7 @@ echo_message "* Installing Files"
 
 # Create directory, clone repository, and install files
 
-git clone https://github.com/draco-labes/panel-v1.0.0.git && cd panel-v1.0.0 && npm install && npm run seed && npm run createUser && node .
+git clone https://github.com/draco-labes/panel-v1.0.0.git && mv panel-v1.0.0 panel && cd panel && npm install && npm run seed && npm run createUser && node .
 
 echo_message "* Installed Files"
 
