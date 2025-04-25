@@ -46,7 +46,7 @@ echo_message "* Installing Files"
 
 # Create directory, clone repository, and install files
 
-git clone https://github.com/draco-labes/draco-daemon && mv draco-daemon node && cd node && npm install && cd node
+git clone https://github.com/dragonlabsdev/draco-daemon && mv draco-daemon node && cd node && npm install && cd node
 
 
 echo "* paste your configure"
