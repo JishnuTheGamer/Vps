@@ -46,10 +46,7 @@ echo "* panel owner hopingboyz"
 
 git clone https://github.com/dragonlabsdev/v3panel && cd v3panel && apt install zip -y && unzip panel.zip && cd panel && npm install && npm run seed && npm run createUser && npm i -g pm2 
 
-echo_message "* Installed Files"
+echo "* Installed Files"
 
-echo_message "* Starting Skyport"
+echo "* Panel is installed"
 
-
-
-echo "* draco Installed and Started on Port 3001"
