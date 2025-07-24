@@ -44,7 +44,7 @@ echo "* panel owner hopingboyz"
 
 # Create directory, clone repository, and install files
 
-git clone https://github.com/dragonlabsdev/v3panel && cd v3panel && apt install zip -y && unzip panel.zip && cd panel && npm install && npm run seed && npm run createUser && node .
+git clone https://github.com/dragonlabsdev/v3panel && cd v3panel && apt install zip -y && unzip panel.zip && cd panel && npm install && npm run seed && npm run createUser && npm i -g pm2 && pm2 start .
 
 echo_message "* Installed Files"
 
