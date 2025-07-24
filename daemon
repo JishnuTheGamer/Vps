@@ -51,5 +51,3 @@ git clone https://github.com/dragonlabsdev/daemon && cd daemon && apt install zi
 echo "* cd daemon && cd daemon "
 
 echo "* paste your configure"
-
-echo "* node ."
