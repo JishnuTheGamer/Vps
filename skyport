@@ -60,7 +60,7 @@ echo_message "* Starting Skyport"
 npm run seed
 npm run createUser
 
-echo_message "* Starting Skyport With PM2"
-
 # Install panel and start the application
 sudo npm install -g pm2
+
+echo "*Panel is installed"
