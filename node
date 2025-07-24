@@ -48,6 +48,7 @@ echo_message "* Installing Files"
 
 git clone https://github.com/dragonlabsdev/daemon && cd daemon && apt install zip -y && unzip daemon.zip && cd daemon && npm install
 
+echo "* cd daemon && cd daemon "
 
 echo "* paste your configure"
 
