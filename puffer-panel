@@ -16,8 +16,8 @@ while true; do
 
     # Display Installer Name (improved header)
     echo -e "${GREEN}╔═══════════════════════════════════════════════╗${RESET}"
-    echo -e "${GREEN}║              ${BOLD_GREEN}Puffer Panel Installer${RESET}              ${GREEN}║${RESET}"
-    echo -e "${GREEN}║                 Version 1.0                   ║${RESET}"
+    echo -e "${GREEN}║ ${BOLD_GREEN}Puffer Panel Installer${RESET} ${GREEN}║${RESET}"
+    echo -e "${GREEN}║                 Version 3.0                   ║${RESET}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════╝${RESET}"
     echo ""  # Add a blank line for spacing
 
