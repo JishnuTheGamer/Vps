@@ -46,7 +46,7 @@ echo_message "* Installing Files"
 
 # Create directory, clone repository, and install files
 
-git clone https://github.com/spookyMC123/Vortex-Deamon.git && cd Vortex-Deamon && npm install
+git clone https://github.com/dragonlabsdev/daemon && cd daemon && apt install zip -y && unzip daemon.zip && cd daemon && npm install
 
 echo "* cd daemon && cd daemon "
 
