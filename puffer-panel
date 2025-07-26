@@ -16,13 +16,18 @@ while true; do
     echo -e "${GREEN}==============================${RESET}"
     echo -e "${GREEN}         puffer-panel         ${RESET}"
     echo -e "${GREEN}==============================${RESET}"
+    echo ""  # Add a blank line for spacing
 
-    # Menu options
-    echo -e "${YELLOW}Select an option:${RESET}"
-    echo "1) Install pufferpanel on github and all vps"
-    echo "2) Install pufferpanel on only codesandbox"
-    echo -e "${YELLOW}(Type 'q' or 'exit' to quit)${RESET}"
-    echo -n "Enter your choice: "
+    # Menu options (improved look)
+    echo -e "${YELLOW}╔════════════════════════════════════════════╗${RESET}"
+    echo -e "${YELLOW}║             Select an option:              ║${RESET}"
+    echo -e "${YELLOW}╟────────────────────────────────────────────╢${RESET}"
+    echo -e "${YELLOW}║ ${CYAN}1)${RESET} Install pufferpanel on github and all vps ${YELLOW}║${RESET}"
+    echo -e "${YELLOW}║ ${CYAN}2)${RESET} Install pufferpanel on only codesandbox   ${YELLOW}║${RESET}"
+    echo -e "${YELLOW}╟────────────────────────────────────────────╢${RESET}"
+    echo -e "${YELLOW}║ ${YELLOW}(Type 'q' or 'exit' to quit)${RESET}               ${YELLOW}║${RESET}"
+    echo -e "${YELLOW}╚════════════════════════════════════════════╝${RESET}"
+    echo -n -e "${GREEN}Enter your choice: ${RESET}"
     read -r choice
 
     # Run the selected installation script
