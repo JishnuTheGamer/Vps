@@ -17,8 +17,8 @@ echo -e "${GREEN}==============================${RESET}"
 
 # Menu options
 echo -e "${YELLOW}Select an option:${RESET}"
-echo "1) Install pufferpanel on github"
-echo "2) Install pufferpanel on all vps and codesandbox"
+echo "1) Install pufferpanel on github and all vps"
+echo "2) Install pufferpanel on only codesandbox"
 echo -n "Enter your choice: "
 read -r choice
 
