@@ -30,7 +30,7 @@ case $choice in
         ;;
     2)
         echo -e "${GREEN}Installing vps pufferpanel...${RESET}"
-        bash <(curl -fsSL https://github.com/spookyMC123/panel-installer/raw/refs/heads/main/script/puffer%20panel/codesandboxvpspufferpanelinstall.sh)
+        bash <(curl -fsSL https://raw.githubusercontent.com/JishnuTheGamer/Puffer-panel-installer/refs/heads/main/Installer)
         ;;
     *)
         echo -e "${RED}Invalid choice! Please run the script again.${RESET}"
