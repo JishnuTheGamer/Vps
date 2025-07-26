@@ -49,7 +49,5 @@ echo_message "* Installing Files"
 git clone https://github.com/achul123/panel5.git && mv panel5 panel && cd panel && npm install && npm run seed && npm run createUser
 
 
-# Install panel and start the application
-sudo npm install -g pm2
 
 echo "*Panel is installed"
