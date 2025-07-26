@@ -5,6 +5,7 @@ GREEN="\e[32m"
 YELLOW="\e[33m"
 CYAN="\e[36m"
 RED="\e[31m"
+BOLD_GREEN="\e[1;32m"  # Bold green for header
 RESET="\e[0m"
 
 # Loop the menu until the user chooses to exit
@@ -12,10 +13,11 @@ while true; do
     # Clear the terminal
     clear
 
-    # Display Installer Name
-    echo -e "${GREEN}==============================${RESET}"
-    echo -e "${GREEN}         puffer-panel         ${RESET}"
-    echo -e "${GREEN}==============================${RESET}"
+    # Display Installer Name (improved header)
+    echo -e "${GREEN}╔════════════════════════════════════════════╗${RESET}"
+    echo -e "${GREEN}║             ${BOLD_GREEN}PUFFER-PANEL${RESET}             ${GREEN}║${RESET}"
+    echo -e "${GREEN}║               Installer Menu               ║${RESET}"
+    echo -e "${GREEN}╚════════════════════════════════════════════╝${RESET}"
     echo ""  # Add a blank line for spacing
 
     # Menu options (improved look)
@@ -41,11 +43,11 @@ while true; do
             # Show disclaimer "popup"
             echo -e "${RED}================================================${RESET}"
             echo -e "${RED} DISCLAIMER:${RESET}"
-            echo -e "${RED} You need to run this cmd in codesanbox modded version only - https://codesandbox.io/p/devbox/nervous-dust-skfsyh ${RESET}"
+            echo -e "${RED} You need to run this cmd in codesandbox modded version only - https://codesandbox.io/p/devbox/nervous-dust-skfsyh ${RESET}"
             echo -e "${RED}================================================${RESET}"
 
-            # Prompt for yes/no
-            echo -n -e "${CYAN}Now- do you want to proses or go back?- yes/no: ${RESET}"
+            # Prompt for yes/no (spelling fixed)
+            echo -n -e "${CYAN}Now- do you want to proceed or go back?- yes/no: ${RESET}"
             read -r response
             response=$(echo "$response" | tr '[:upper:]' '[:lower:]' | xargs)  # Convert to lowercase and trim whitespace
 
