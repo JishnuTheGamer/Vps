@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# install updates
+sudo apt update
+
+# install the docker
+
+apt install docker
+apt install docker-compose
+
+# Install the main vps creadit by hopingboyz
+
+docker run -it --rm \
+  --name newname \
+  -v $PWD/vmdata:/vmdata \
+  -e RAM=7900 \
+  -e CPU=3 \
+  -e DISK_SIZE=100G \
+  hopingboyz/debain12
