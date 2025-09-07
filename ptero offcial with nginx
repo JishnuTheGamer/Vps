@@ -1,0 +1,147 @@
+#!/bin/bash
+
+set -e
+
+######################################################################################
+#                                                                                    #
+# Pterodactyl Panel + Optional Nginx Installer                                        #
+#                                                                                    #
+# Step 1: Installs Pterodactyl Panel                                                 #
+# Step 2: Asks if you want to configure Nginx with SSL for the panel                 #
+#                                                                                    #
+######################################################################################
+
+export GITHUB_SOURCE="v1.1.1"
+export SCRIPT_RELEASE="v1.1.1"
+export GITHUB_BASE_URL="https://raw.githubusercontent.com/pterodactyl-installer/pterodactyl-installer"
+
+LOG_PATH="/var/log/pterodactyl-installer.log"
+
+# Check for curl
+if ! [ -x "$(command -v curl)" ]; then
+  echo "* curl is required in order for this script to work."
+  echo "* install using apt (Debian and derivatives) or yum/dnf (CentOS)"
+  exit 1
+fi
+
+# Always remove lib.sh, before downloading it
+[ -f /tmp/lib.sh ] && rm -rf /tmp/lib.sh
+curl -sSL -o /tmp/lib.sh "$GITHUB_BASE_URL"/master/lib/lib.sh
+# shellcheck source=lib/lib.sh
+source /tmp/lib.sh
+
+# Panel install
+install_panel_step() {
+  echo -e "\n\n* Starting Pterodactyl Panel installation...\n\n" | tee -a $LOG_PATH
+  update_lib_source
+  run_ui "panel" |& tee -a $LOG_PATH
+  echo -e "\n✅ Panel installation finished!\n"
+}
+
+# Nginx setup
+nginx_setup_step() {
+  read -p "Enter your domain for the panel (e.g., panel.example.com): " DOMAIN
+
+  CERT_DIR="/etc/certs/panel"
+  mkdir -p "$CERT_DIR"
+  cd "$CERT_DIR" || exit
+
+  # Generate self-signed cert if not exists
+  if [ ! -f "$CERT_DIR/privkey.pem" ] || [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+      openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
+      -subj "/C=NA/ST=NA/L=NA/O=SelfSigned/CN=${DOMAIN}" \
+      -keyout privkey.pem -out fullchain.pem
+  fi
+
+  # Nginx config
+  NGINX_CONF="/etc/nginx/sites-available/pterodactyl.conf"
+  NGINX_LINK="/etc/nginx/sites-enabled/pterodactyl.conf"
+
+  cat > "$NGINX_CONF" << EOF
+server {
+    listen 80;
+    server_name ${DOMAIN};
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    root /var/www/pterodactyl/public;
+    index index.php;
+
+    access_log /var/log/nginx/pterodactyl.app-access.log;
+    error_log  /var/log/nginx/pterodactyl.app-error.log error;
+
+    client_max_body_size 100m;
+    client_body_timeout 120s;
+    sendfile off;
+
+    ssl_certificate ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1h;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384";
+    ssl_prefer_server_ciphers on;
+
+    add_header Strict-Transport-Security "max-age=15768000; includeSubDomains; preload" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Robots-Tag none always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy same-origin always;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php\$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)\$;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_param PHP_VALUE "upload_max_filesize=100M \n post_max_size=100M";
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_intercept_errors off;
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 4 16k;
+        fastcgi_connect_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_read_timeout 300;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+  ln -sf "$NGINX_CONF" "$NGINX_LINK"
+
+  if nginx -t; then
+      systemctl reload nginx
+      echo "✅ Nginx configured for ${DOMAIN}"
+  else
+      echo "❌ Nginx config test failed. Please check output."
+      exit 1
+  fi
+}
+
+# Run installer
+welcome ""
+install_panel_step
+
+echo -n "* Do you want to configure Nginx for the panel now? (y/N): "
+read -r CONFIRM
+if [[ "$CONFIRM" =~ [Yy] ]]; then
+  nginx_setup_step
+else
+  echo "⏩ Skipping Nginx setup."
+fi
+
+# Cleanup
+rm -rf /tmp/lib.sh
