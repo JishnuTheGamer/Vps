@@ -1,0 +1,43 @@
+#!/bin/bash
+set -e
+
+echo "🔧 Pterodactyl Wings Config Setup"
+
+# User se inputs lo
+read -p "Enter UUID: " UUID
+read -p "Enter Token ID: " TOKEN_ID
+read -p "Enter Token: " TOKEN
+read -p "Enter Panel URL (remote): " REMOTE
+
+# Config folder create
+mkdir -p /etc/pterodactyl
+
+# Config likhna
+tee /etc/pterodactyl/config.yml > /dev/null <<CFG
+debug: false
+uuid: ${UUID}
+token_id: ${TOKEN_ID}
+token: ${TOKEN}
+api:
+  host: 0.0.0.0
+  port: 8080
+  ssl:
+    enabled: true
+    cert: /etc/certs/wing/fullchain.pem
+    key: /etc/certs/wing/privkey.pem
+  upload_limit: 100
+system:
+  data: /var/lib/pterodactyl/volumes
+  sftp:
+    bind_port: 2022
+allowed_mounts: []
+remote: '${REMOTE}'
+CFG
+
+echo "✅ Config saved to /etc/pterodactyl/config.yml"
+
+# Wings service start karna
+echo "🚀 Starting Wings service..."
+systemctl start wings
+
+echo "✅ Wings started successfully!"
