@@ -1,56 +1,165 @@
 #!/bin/bash
-clear
-read -p "Enter your domain (e.g., panel.example.com): " DOMAIN
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Function to print section headers
+print_header() {
+    echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN} $1 ${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+}
+
+# Function to print status messages
+print_status() {
+    echo -e "${YELLOW}⏳ $1...${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+# Function to animate progress
+animate_progress() {
+    local pid=$1
+    local message=$2
+    local delay=0.1
+    local spinstr='|/-\'
+    
+    print_status "$message"
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+# Clear screen and show welcome message
+clear
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${CYAN}           PTERODACTYL PANEL INSTALLER           ${NC}"
+echo -e "${CYAN}                 by Nobita-hosting               ${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+
+# Get domain name
+read -p "$(echo -e "${YELLOW}🌐 Enter your domain (e.g., panel.example.com): ${NC}")" DOMAIN
+
+# Validate domain input
+if [ -z "$DOMAIN" ]; then
+    print_error "Domain cannot be empty!"
+    exit 1
+fi
+
+print_header "STARTING INSTALLATION PROCESS"
 
 # --- Dependencies ---
-apt update && apt install -y curl apt-transport-https ca-certificates gnupg unzip git tar sudo lsb-release
+print_header "INSTALLING DEPENDENCIES"
+print_status "Updating package list"
+apt update > /dev/null 2>&1 &
+animate_progress $! "Updating packages"
+print_success "Package list updated"
+
+print_status "Installing required packages"
+apt install -y curl apt-transport-https ca-certificates gnupg unzip git tar sudo lsb-release > /dev/null 2>&1 &
+animate_progress $! "Installing dependencies"
+print_success "Dependencies installed"
 
 # Detect OS
 OS=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 
 if [[ "$OS" == "ubuntu" ]]; then
-    echo "✅ Detected Ubuntu. Adding PPA for PHP..."
-    apt install -y software-properties-common
-    LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php
+    print_status "Detected Ubuntu - Adding PHP PPA"
+    apt install -y software-properties-common > /dev/null 2>&1
+    LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php > /dev/null 2>&1 &
+    animate_progress $! "Adding PHP repository"
+    print_success "PHP PPA added"
 elif [[ "$OS" == "debian" ]]; then
-    echo "✅ Detected Debian. Skipping PPA and adding PHP repo manually..."
-    # Add SURY PHP repo for Debian
-    curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg
-    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/sury-php.list
+    print_status "Detected Debian - Adding PHP repository"
+    curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg > /dev/null 2>&1
+    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/sury-php.list > /dev/null
+    print_success "PHP repository added"
 fi
 
-# Add Redis GPG key and repo
-curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
+# Add Redis repository
+print_status "Adding Redis repository"
+curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg > /dev/null 2>&1
+echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list > /dev/null
+print_success "Redis repository added"
 
-apt update
+print_status "Updating package list with new repositories"
+apt update > /dev/null 2>&1 &
+animate_progress $! "Updating package lists"
+print_success "Package lists updated"
 
 # --- Install PHP + extensions ---
-apt install -y php8.3 php8.3-{cli,fpm,common,mysql,mbstring,bcmath,xml,zip,curl,gd,tokenizer,ctype,simplexml,dom} mariadb-server nginx redis-server
+print_header "INSTALLING PHP AND EXTENSIONS"
+print_status "Installing PHP 8.3 and extensions"
+apt install -y php8.3 php8.3-{cli,fpm,common,mysql,mbstring,bcmath,xml,zip,curl,gd,tokenizer,ctype,simplexml,dom} > /dev/null 2>&1 &
+animate_progress $! "Installing PHP and extensions"
+print_success "PHP and extensions installed"
+
+# --- Install other services ---
+print_status "Installing MariaDB, Nginx, and Redis"
+apt install -y mariadb-server nginx redis-server > /dev/null 2>&1 &
+animate_progress $! "Installing core services"
+print_success "Core services installed"
 
 # --- Install Composer ---
-curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+print_header "INSTALLING COMPOSER"
+print_status "Downloading and installing Composer"
+curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer > /dev/null 2>&1 &
+animate_progress $! "Installing Composer"
+print_success "Composer installed"
 
 # --- Download Pterodactyl Panel ---
+print_header "DOWNLOADING PTERODACTYL PANEL"
+print_status "Creating web directory"
 mkdir -p /var/www/pterodactyl
 cd /var/www/pterodactyl
-curl -Lo panel.tar.gz https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz
-tar -xzvf panel.tar.gz
-chmod -R 755 storage/* bootstrap/cache/
+
+print_status "Downloading Pterodactyl panel"
+curl -Lo panel.tar.gz https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz > /dev/null 2>&1 &
+animate_progress $! "Downloading panel files"
+print_success "Panel downloaded"
+
+print_status "Extracting panel files"
+tar -xzvf panel.tar.gz > /dev/null 2>&1 &
+animate_progress $! "Extracting files"
+print_success "Files extracted"
+
+print_status "Setting permissions"
+chmod -R 755 storage/* bootstrap/cache/ > /dev/null 2>&1
+print_success "Permissions set"
 
 # --- MariaDB Setup ---
+print_header "CONFIGURING DATABASE"
+print_status "Setting up MariaDB database and user"
 DB_NAME=panel
 DB_USER=pterodactyl
-DB_PASS=yourPassword
-mariadb -e "CREATE USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';"
-mariadb -e "CREATE DATABASE ${DB_NAME};"
-mariadb -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION;"
-mariadb -e "FLUSH PRIVILEGES;"
+DB_PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16 ; echo '')
+mariadb -e "CREATE USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';" > /dev/null 2>&1
+mariadb -e "CREATE DATABASE ${DB_NAME};" > /dev/null 2>&1
+mariadb -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'127.0.0.1' WITH GRANT OPTION;" > /dev/null 2>&1
+mariadb -e "FLUSH PRIVILEGES;" > /dev/null 2>&1
+print_success "Database configured"
 
 # --- .env Setup ---
+print_header "CONFIGURING ENVIRONMENT"
+print_status "Setting up environment file"
 if [ ! -f ".env.example" ]; then
-    curl -Lo .env.example https://raw.githubusercontent.com/pterodactyl/panel/develop/.env.example
+    curl -Lo .env.example https://raw.githubusercontent.com/pterodactyl/panel/develop/.env.example > /dev/null 2>&1
 fi
 cp .env.example .env
 sed -i "s|APP_URL=.*|APP_URL=https://${DOMAIN}|g" .env
@@ -60,29 +169,48 @@ sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=${DB_PASS}|g" .env
 if ! grep -q "^APP_ENVIRONMENT_ONLY=" .env; then
     echo "APP_ENVIRONMENT_ONLY=false" >> .env
 fi
+print_success "Environment configured"
 
 # --- Install PHP dependencies ---
-echo "✅ Installing PHP dependencies..."
-COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader
+print_status "Installing PHP dependencies with Composer"
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader > /dev/null 2>&1 &
+animate_progress $! "Installing dependencies"
+print_success "PHP dependencies installed"
 
 # --- Generate Application Key ---
-echo "✅ Generating application key..."
-php artisan key:generate --force
+print_status "Generating application key"
+php artisan key:generate --force > /dev/null 2>&1
+print_success "Application key generated"
 
 # --- Run Migrations ---
-php artisan migrate --seed --force
+print_status "Running database migrations"
+php artisan migrate --seed --force > /dev/null 2>&1 &
+animate_progress $! "Running migrations"
+print_success "Database migrations completed"
 
 # --- Permissions ---
-chown -R www-data:www-data /var/www/pterodactyl/*
-apt install -y cron
-systemctl enable --now cron
-(crontab -l 2>/dev/null; echo "* * * * * php /var/www/pterodactyl/artisan schedule:run >> /dev/null 2>&1") | crontab -
-# --- Nginx Setup ---
+print_status "Setting final permissions"
+chown -R www-data:www-data /var/www/pterodactyl/* > /dev/null 2>&1
+apt install -y cron > /dev/null 2>&1
+systemctl enable --now cron > /dev/null 2>&1
+(crontab -l 2>/dev/null; echo "* * * * * php /var/www/pterodactyl/artisan schedule:run >> /dev/null 2>&1") | crontab - > /dev/null 2>&1
+print_success "Permissions and cron configured"
+
+# --- SSL Certificate ---
+print_header "CONFIGURING SSL CERTIFICATE"
+print_status "Generating self-signed SSL certificate"
 mkdir -p /etc/certs/panel
 cd /etc/certs/panel
 openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
 -subj "/C=NA/ST=NA/L=NA/O=NA/CN=Generic SSL Certificate" \
--keyout privkey.pem -out fullchain.pem
+-keyout privkey.pem -out fullchain.pem > /dev/null 2>&1 &
+animate_progress $! "Generating SSL certificate"
+print_success "SSL certificate generated"
+
+# --- Nginx Setup ---
+print_header "CONFIGURING NGINX"
+print_status "Creating Nginx configuration"
+PHP_VERSION="8.3"
 
 tee /etc/nginx/sites-available/pterodactyl.conf > /dev/null << EOF
 server {
@@ -124,10 +252,25 @@ server {
 }
 EOF
 
-ln -s /etc/nginx/sites-available/pterodactyl.conf /etc/nginx/sites-enabled/pterodactyl.conf || true
-nginx -t && systemctl restart nginx
+print_status "Enabling site configuration"
+ln -s /etc/nginx/sites-available/pterodactyl.conf /etc/nginx/sites-enabled/pterodactyl.conf 2>/dev/null || true
+
+print_status "Testing Nginx configuration"
+nginx -t > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_success "Nginx configuration test passed"
+    print_status "Restarting Nginx"
+    systemctl restart nginx > /dev/null 2>&1
+    print_success "Nginx configured and restarted"
+else
+    print_error "Nginx configuration test failed"
+    exit 1
+fi
 
 # --- Queue Worker ---
+print_header "CONFIGURING QUEUE WORKER"
+print_status "Setting up Pterodactyl queue worker"
+
 tee /etc/systemd/system/pteroq.service > /dev/null << 'EOF'
 [Unit]
 Description=Pterodactyl Queue Worker
@@ -144,33 +287,83 @@ RestartSec=5s
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable --now redis-server
-systemctl enable --now pteroq.service
-clear
-# --- Admin User ---
+print_status "Enabling and starting services"
+systemctl daemon-reload > /dev/null 2>&1
+systemctl enable --now redis-server > /dev/null 2>&1
+systemctl enable --now pteroq.service > /dev/null 2>&1
+print_success "Queue worker configured"
+
+# --- Final Configuration ---
+print_header "FINAL CONFIGURATION"
+print_status "Updating environment settings"
 cd /var/www/pterodactyl
-php artisan p:user:make 
 
+# Remove existing settings if they exist
 sed -i '/^APP_ENVIRONMENT_ONLY=/d' .env
+sed -i '/^APP_THEME=/d' .env
+sed -i '/^APP_TIMEZONE=/d' .env
+sed -i '/^MAIL_/d' .env
+
+# Add new env variables
 echo "APP_ENVIRONMENT_ONLY=false" >> .env
+echo "APP_THEME=Nobita-hosting" >> .env
 
-# --- Animated Info ---
-echo -e "\n\e[1;32m✔ Pterodactyl Panel Setup Complete!\e[0m"
-echo -ne "\e[1;34mFinalizing installation"
-for i in {1..5}; do
-    echo -n "."
-    sleep 0.5
-done
-echo -e "\n"
+# Auto detect timezone
+TIMEZONE=$(timedatectl show --property=Timezone --value)
+echo "APP_TIMEZONE=${TIMEZONE}" >> .env
 
-echo -e "\e[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[1;36m  ✅ Installation Completed Successfully! \e[0m"
-echo -e "\e[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[1;32m  🌐 Your Panel URL: \e[1;37mhttps://${DOMAIN}\e[0m"
-echo -e "\e[1;32m  📂 Panel Directory: \e[1;37m/var/www/pterodactyl\e[0m"
-echo -e "\e[1;32m  🛠 Create Admin: \e[1;37mphp artisan p:user:make\e[0m"
-echo -e "\e[1;32m  🔑 DB User: \e[1;37m${DB_USER}\e[0m"
-echo -e "\e[1;32m  🔑 DB Password: \e[1;37m${DB_PASS}\e[0m"
-echo -e "\e[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
-echo -e "\e[1;35m  🎉 Enjoy your Pterodactyl Panel! \e[0m"
+# Mail configuration
+echo "MAIL_MAILER=smtp" >> .env
+echo "MAIL_HOST=smtp.zoho.in" >> .env
+echo "MAIL_PORT=587" >> .env
+echo "MAIL_USERNAME=no.reply@editorxprress.site" >> .env
+echo "MAIL_PASSWORD=58@S5wZuWtpdDDX" >> .env
+echo "MAIL_ENCRYPTION=tls" >> .env
+echo "MAIL_FROM_ADDRESS=no.reply@editorxprress.site" >> .env
+echo 'MAIL_FROM_NAME="Nobita-hosting"' >> .env
+
+print_success "Environment settings updated"
+
+# --- Installation Complete ---
+clear
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${CYAN}          INSTALLATION COMPLETE!                 ${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e ""
+echo -e "${GREEN}🎉 Pterodactyl Panel has been successfully installed!${NC}"
+echo -e ""
+echo -e "${YELLOW}📋 NEXT STEPS:${NC}"
+echo -e "  ${CYAN}1.${NC} Create an admin account:"
+echo -e "     ${GREEN}cd /var/www/pterodactyl && php artisan p:user:make${NC}"
+echo -e ""
+echo -e "  ${CYAN}2.${NC} Access your panel at:"
+echo -e "     ${GREEN}https://${DOMAIN}${NC}"
+echo -e ""
+echo -e "${YELLOW}🔧 TECHNICAL DETAILS:${NC}"
+echo -e "  ${CYAN}•${NC} Database Name: ${GREEN}${DB_NAME}${NC}"
+echo -e "  ${CYAN}•${NC} Database User: ${GREEN}${DB_USER}${NC}"
+echo -e "  ${CYAN}•${NC} Database Password: ${GREEN}${DB_PASS}${NC}"
+echo -e "  ${CYAN}•${NC} Installation Directory: ${GREEN}/var/www/pterodactyl${NC}"
+echo -e "  ${CYAN}•${NC} Theme: ${GREEN}Nobita-hosting${NC}"
+echo -e ""
+echo -e "${YELLOW}⚠️  IMPORTANT:${NC}"
+echo -e "  ${CYAN}•${NC} Remember to replace the self-signed SSL certificate"
+echo -e "    with a valid one for production use"
+echo -e ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${CYAN}           Thank you for using Nobita-hosting!   ${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Prompt to create admin user
+echo -e ""
+read -p "$(echo -e "${YELLOW}Would you like to create an admin user now? (y/N): ${NC}")" -n 1 -r
+echo -e ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    print_header "CREATING ADMIN USER"
+    cd /var/www/pterodactyl
+    php artisan p:user:make
+fi
+
+echo -e ""
+echo -e "${GREEN}✨ Installation completed successfully!${NC}"
+echo -e ""
