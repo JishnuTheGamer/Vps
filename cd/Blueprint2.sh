@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Colors for output
@@ -135,13 +136,13 @@ install_nobita() {
     # --- Step 3: Download and Extract Release ---
     print_header "DOWNLOADING NOBITA HOSTING"
     print_status "Downloading latest release"
-    wget "$(curl -s https://api.github.com/repos/BlueprintFramework/framework/releases/latest | \
-    grep 'browser_download_url' | cut -d '"' -f 4)" -O release.zip > /dev/null 2>&1 &
+    wget https://github.com/BlueprintFramework/framework/releases/download/beta-2025-11/beta-2025-11.zip
+    unzip -o beta-2025-11.zip
     animate_progress $! "Downloading release"
     check_success "Release downloaded" "Failed to download release"
 
     print_status "Extracting release files"
-    unzip -o release.zip > /dev/null 2>&1 &
+    unzip -o beta-2025-11.zip > /dev/null 2>&1 &
     animate_progress $! "Extracting files"
     check_success "Files extracted" "Failed to extract files"
 
