@@ -1,58 +1,57 @@
 #!/bin/bash
 
-# Blueprint Installer Script
-# Made by Jishnu
-
-# Color codes for output
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# Function to print colored output
-print_message() {
-    echo -e "${GREEN}[Blueprint Installer]${NC} $1"
+# Function to print section headers
+print_header() {
+    echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN} $1 ${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+}
+
+# Function to print status messages
+print_status() {
+    echo -e "${YELLOW}⏳ $1...${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
 }
 
 print_error() {
-    echo -e "${RED}[Blueprint Installer] ERROR:${NC} $1"
+    echo -e "${RED}❌ $1${NC}"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[Blueprint Installer] WARNING:${NC} $1"
+    echo -e "${MAGENTA}⚠️  $1${NC}"
 }
 
-print_header() {
-    echo -e "${CYAN}==========================================${NC}"
-    echo -e "${PURPLE}    $1${NC}"
-    echo -e "${CYAN}==========================================${NC}"
-}
-
-print_status() {
-    echo -e "${BLUE}[STATUS]${NC} $1"
-}
-
-# Function to check if command was successful
-check_status() {
+# Function to check if command succeeded
+check_success() {
     if [ $? -eq 0 ]; then
-        print_message "✓ $1"
+        print_success "$1"
+        return 0
     else
         print_error "$2"
-        exit 1
+        return 1
     fi
 }
 
 # Function to animate progress
 animate_progress() {
     local pid=$1
-    local message="$2"
+    local message=$2
     local delay=0.1
     local spinstr='|/-\'
     
-    echo -n "$message "
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
         local temp=${spinstr#?}
         printf " [%c]  " "$spinstr"
@@ -63,330 +62,168 @@ animate_progress() {
     printf "    \b\b\b\b"
 }
 
-check_success() {
-    if [ $? -eq 0 ]; then
-        print_message "✓ $1"
-    else
-        print_error "$2"
-    fi
+# Welcome animation
+welcome_animation() {
+    clear
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}"
+    echo "   ███╗   ██╗ ██████╗ ██████╗ ██╗████████╗ █████╗ "
+    echo "   ████╗  ██║██╔═══██╗██╔══██╗██║╚══██╔══╝██╔══██╗"
+    echo "   ██╔██╗ ██║██║   ██║██████╔╝██║   ██║   ███████║"
+    echo "   ██║╚██╗██║██║   ██║██╔══██╗██║   ██║   ██╔══██║"
+    echo "   ██║ ╚████║╚██████╔╝██║  ██║██║   ██║   ██║  ██║"
+    echo "   ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝"
+    echo -e "${NC}"
+    echo -e "${CYAN}              Blueprint Installer${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    sleep 2
 }
 
-# Function: Fresh Blueprint Installation
-blueprint_fresh_install() {
-    print_header "BLUEPRINT FRESH INSTALLATION"
+# Function: Install (Fresh Setup)
+install_nobita() {
+    print_header "FRESH INSTALLATION"
     
-    # Set Pterodactyl directory
-    read -p "Enter Pterodactyl installation directory [/var/www/pterodactyl]: " PTERODACTYL_DIRECTORY
-    PTERODACTYL_DIRECTORY=${PTERODACTYL_DIRECTORY:-/var/www/pterodactyl}
-    
-    # Verify directory exists
-    if [ ! -d "$PTERODACTYL_DIRECTORY" ]; then
-        print_error "Directory $PTERODACTYL_DIRECTORY does not exist!"
-        read -p "Create directory? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            sudo mkdir -p "$PTERODACTYL_DIRECTORY"
-            check_status "Created directory $PTERODACTYL_DIRECTORY" "Failed to create directory"
-        else
-            echo "Exiting..."
-            return 1
-        fi
-    fi
-    
-    export PTERODACTYL_DIRECTORY
-    print_message "Using directory: $PTERODACTYL_DIRECTORY"
-    
-    # Step 1: Install basic dependencies
-    print_status "Installing basic dependencies..."
-    sudo apt update
-    sudo apt install -y curl wget unzip ca-certificates git gnupg zip > /dev/null 2>&1 &
-    animate_progress $! "Installing basic dependencies"
-    check_success "Basic dependencies installed" "Failed to install basic dependencies"
-    
-    # Step 2: Navigate to Pterodactyl directory
-    print_status "Changing to Pterodactyl directory..."
-    cd "$PTERODACTYL_DIRECTORY" || { print_error "Failed to change directory"; return 1; }
-    check_status "Changed to $PTERODACTYL_DIRECTORY"
-    
-    # Step 3: Download Blueprint release
-    print_status "Downloading latest Blueprint release..."
-    DOWNLOAD_URL=$(curl -s https://api.github.com/repos/BlueprintFramework/framework/releases/latest | grep 'browser_download_url' | cut -d '"' -f 4)
-    
-    if [ -z "$DOWNLOAD_URL" ]; then
-        print_error "Failed to get download URL from GitHub API"
+    if [ "$EUID" -ne 0 ]; then
+        print_error "Please run this script as root or with sudo"
         return 1
     fi
+
+    print_status "Starting Fresh Install for Nobita Hosting"
+
+    # --- Step 1: Install Node.js 20.x ---
+    print_header "INSTALLING NODE.JS 20.x"
+    print_status "Installing required packages"
+    sudo apt-get install -y ca-certificates curl gnupg > /dev/null 2>&1 &
+    animate_progress $! "Installing dependencies"
     
-    print_message "Downloading from: $DOWNLOAD_URL"
-    wget "$DOWNLOAD_URL" -O "$PTERODACTYL_DIRECTORY/release.zip" > /dev/null 2>&1 &
-    animate_progress $! "Downloading Blueprint"
-    check_success "Blueprint release downloaded" "Failed to download Blueprint release"
-    
-    # Step 4: Extract the release
-    print_status "Extracting Blueprint release..."
-    unzip -o release.zip > /dev/null 2>&1 &
-    animate_progress $! "Extracting files"
-    check_success "Blueprint release extracted" "Failed to extract Blueprint release"
-    
-    # Clean up zip file
-    rm -f release.zip
-    print_message "Cleaned up release.zip"
-    
-    # Step 5: Install Node.js
-    print_status "Installing Node.js..."
+    print_status "Setting up Node.js repository"
     sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg > /dev/null 2>&1 &
-    animate_progress $! "Adding Node.js repository"
-    check_success "Node.js GPG key added" "Failed to add Node.js GPG key"
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | \
+      sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg > /dev/null 2>&1
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | \
+      sudo tee /etc/apt/sources.list.d/nodesource.list > /dev/null 2>&1
+      
+    print_status "Updating package lists"
+    sudo apt-get update > /dev/null 2>&1 &
+    animate_progress $! "Updating package lists"
     
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list > /dev/null
-    sudo apt update > /dev/null 2>&1 &
-    animate_progress $! "Updating package list"
-    
-    sudo apt install -y nodejs > /dev/null 2>&1 &
+    print_status "Installing Node.js"
+    sudo apt-get install -y nodejs > /dev/null 2>&1 &
     animate_progress $! "Installing Node.js"
     check_success "Node.js installed" "Failed to install Node.js"
-    
-    # Step 6: Install Yarn and dependencies
-    print_status "Installing Yarn and dependencies..."
-    cd "$PTERODACTYL_DIRECTORY" || { print_error "Failed to change directory"; return 1; }
-    
+
+    # --- Step 2: Install Yarn, Dependencies & Nobita Hosting Release ---
+    print_header "INSTALLING DEPENDENCIES"
+    print_status "Installing Yarn"
     npm i -g yarn > /dev/null 2>&1 &
     animate_progress $! "Installing Yarn"
-    check_success "Yarn installed globally" "Failed to install Yarn"
-    
-    yarn install > /dev/null 2>&1 &
-    animate_progress $! "Installing Node.js dependencies"
-    check_success "Node.js dependencies installed" "Failed to install Node.js dependencies"
-    
-    # Step 7: Create .blueprintrc file
-    print_status "Creating .blueprintrc configuration file..."
-    BLUEPRINT_RC_FILE="$PTERODACTYL_DIRECTORY/.blueprintrc"
-    
-    if [ -f "$BLUEPRINT_RC_FILE" ]; then
-        print_warning ".blueprintrc file already exists!"
-        read -p "Overwrite? (y/n): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_message "Keeping existing .blueprintrc file"
-        else
-            create_blueprintrc=1
-        fi
-    else
-        create_blueprintrc=1
-    fi
-    
-    if [ "$create_blueprintrc" = "1" ]; then
-        cat > "$BLUEPRINT_RC_FILE" << EOF
-WEBUSER="www-data"
-OWNERSHIP="www-data:www-data"
-USERSHELL="/bin/bash"
-EOF
-        check_status ".blueprintrc file created" "Failed to create .blueprintrc file"
-        
-        # Show contents
-        print_message "Contents of .blueprintrc:"
-        cat "$BLUEPRINT_RC_FILE"
-    fi
-    
-    # Step 8: Set execute permissions and run blueprint.sh
-    print_status "Setting up Blueprint..."
-    
-    BLUEPRINT_SCRIPT="$PTERODACTYL_DIRECTORY/blueprint.sh"
-    
-    if [ -f "$BLUEPRINT_SCRIPT" ]; then
-        chmod +x "$BLUEPRINT_SCRIPT"
-        check_status "Execute permissions granted to blueprint.sh" "Failed to set permissions"
-        
-        print_status "Running Blueprint installation script..."
-        echo "=========================================="
-        bash "$BLUEPRINT_SCRIPT"
-        
-        if [ $? -eq 0 ]; then
-            echo ""
-            print_message "Blueprint installation completed successfully!"
-            print_message "Installation directory: $PTERODACTYL_DIRECTORY"
-        else
-            print_error "Blueprint script encountered an error"
-        fi
-    else
-        print_error "blueprint.sh not found in $PTERODACTYL_DIRECTORY"
-        print_message "Please check if the download and extraction were successful"
-    fi
-    
-    print_header "FRESH INSTALLATION COMPLETED"
-}
+    check_success "Yarn installed" "Failed to install Yarn"
 
-# Function: Reinstall Blueprint (Rerun Only)
-reinstall_blueprint() {
-    print_header "REINSTALLING BLUEPRINT"
+    print_status "Changing to panel directory"
+    cd /var/www/pterodactyl || { print_error "Panel directory not found!"; return 1; }
     
-    # Check if we're in a Pterodactyl directory
-    if [ ! -f "blueprint.sh" ] && [ ! -f ".blueprintrc" ]; then
-        print_error "This doesn't appear to be a Blueprint/Pterodactyl directory!"
-        read -p "Enter Pterodactyl installation directory [/var/www/pterodactyl]: " PTERODACTYL_DIRECTORY
-        PTERODACTYL_DIRECTORY=${PTERODACTYL_DIRECTORY:-/var/www/pterodactyl}
-        
-        if [ ! -d "$PTERODACTYL_DIRECTORY" ]; then
-            print_error "Directory $PTERODACTYL_DIRECTORY does not exist!"
-            return 1
-        fi
-        
-        cd "$PTERODACTYL_DIRECTORY" || { print_error "Failed to change directory"; return 1; }
-    fi
-    
+    print_status "Installing Yarn dependencies"
+    yarn > /dev/null 2>&1 &
+    animate_progress $! "Installing Yarn dependencies"
+    check_success "Yarn dependencies installed" "Failed to install Yarn dependencies"
+
+    print_status "Installing additional packages"
+    sudo apt install -y zip unzip git curl wget > /dev/null 2>&1 &
+    animate_progress $! "Installing additional packages"
+    check_success "Additional packages installed" "Failed to install additional packages"
+
+    # --- Step 3: Download and Extract Release ---
+    print_header "DOWNLOADING NOBITA HOSTING"
+    print_status "Downloading latest release"
+    wget "$(curl -s https://api.github.com/repos/BlueprintFramework/framework/releases/latest | \
+    grep 'browser_download_url' | cut -d '"' -f 4)" -O release.zip > /dev/null 2>&1 &
+    animate_progress $! "Downloading release"
+    check_success "Release downloaded" "Failed to download release"
+
+    print_status "Extracting release files"
+    unzip -o release.zip > /dev/null 2>&1 &
+    animate_progress $! "Extracting files"
+    check_success "Files extracted" "Failed to extract files"
+
+    # --- Step 4: Run Nobita Hosting Installer ---
+    print_header "RUNNING BLUEPRINT INSTALLER"
     if [ ! -f "blueprint.sh" ]; then
-        print_error "blueprint.sh not found in current directory!"
-        print_error "Please navigate to your Pterodactyl installation directory first."
+        print_error "blueprint.sh not found in release package"
         return 1
     fi
-    
-    print_status "Starting reinstallation..."
-    
-    # Check if blueprint command exists
-    if command -v blueprint &> /dev/null; then
-        print_status "Running blueprint reinstallation command..."
-        blueprint -rerun-install > /dev/null 2>&1 &
-        animate_progress $! "Reinstalling Blueprint"
-        check_success "Reinstallation completed" "Reinstallation failed"
-    else
-        print_warning "Blueprint command not found, running blueprint.sh directly..."
-        
-        # Make sure blueprint.sh is executable
-        if [ ! -x "blueprint.sh" ]; then
-            chmod +x blueprint.sh
-        fi
-        
-        # Run blueprint.sh with reinstall flag or just run it
-        if grep -q "rerun\|reinstall" blueprint.sh; then
-            bash blueprint.sh --rerun > /dev/null 2>&1 &
-        else
-            bash blueprint.sh > /dev/null 2>&1 &
-        fi
-        
-        animate_progress $! "Reinstalling Blueprint"
-        check_success "Reinstallation completed" "Reinstallation failed"
-    fi
-    
-    print_header "REINSTALLATION COMPLETED"
+
+    print_status "Making blueprint.sh executable"
+    chmod +x blueprint.sh
+    check_success "Made executable" "Failed to make executable"
+
+    print_status "Running Blueprint installer"
+    bash blueprint.sh
 }
 
-# Function to display menu
+# Function: Reinstall (Rerun Only)
+reinstall_nobita() {
+    print_header "REINSTALLING NOBITA HOSTING"
+    print_status "Starting reinstallation"
+    blueprint -rerun-install > /dev/null 2>&1 &
+    animate_progress $! "Reinstalling"
+    check_success "Reinstallation completed" "Reinstallation failed"
+}
+
+# Function: Update Nobita Hosting
+update_nobita() {
+    print_header "UPDATING NOBITA HOSTING"
+    print_status "Starting update"
+    blueprint -upgrade > /dev/null 2>&1 &
+    animate_progress $! "Updating"
+    check_success "Update completed" "Update failed"
+}
+
+# Function to display the main menu
 show_menu() {
     clear
-    print_header "BLUEPRINT FRAMEWORK INSTALLER"
-    echo ""
-    echo -e "${GREEN}Made by Jishnu${NC}"
-    echo ""
-    echo -e "${YELLOW}Select an option:${NC}"
-    echo "1) Blueprint fresh install"
-    echo "2) Re-install blueprint"
-    echo "3) Check system requirements"
-    echo "4) Exit"
-    echo ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}           🔧 BLUEPRINT INSTALLER               ${NC}"
+    echo -e "${CYAN}              Nobita Hosting                   ${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e ""
+    echo -e "${WHITE}╔═══════════════════════════════════════════════╗${NC}"
+    echo -e "${WHITE}║                📋 MAIN MENU                   ║${NC}"
+    echo -e "${WHITE}╠═══════════════════════════════════════════════╣${NC}"
+    echo -e "${WHITE}║   ${GREEN}1)${NC} ${CYAN}Fresh Install${NC}                         ${WHITE}║${NC}"
+    echo -e "${WHITE}║   ${GREEN}2)${NC} ${CYAN}Reinstall (Rerun Only)${NC}                ${WHITE}║${NC}"
+    echo -e "${WHITE}║   ${GREEN}3)${NC} ${CYAN}Update Nobita Hosting${NC}                 ${WHITE}║${NC}"
+    echo -e "${WHITE}║   ${GREEN}0)${NC} ${RED}Exit${NC}                               ${WHITE}║${NC}"
+    echo -e "${WHITE}╚═══════════════════════════════════════════════╝${NC}"
+    echo -e ""
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}📝 Select an option [0-3]: ${NC}"
 }
 
-# Function to check system requirements
-check_system() {
-    print_header "SYSTEM REQUIREMENTS CHECK"
-    
-    echo -e "${YELLOW}Checking system requirements...${NC}"
-    echo ""
-    
-    # Check OS
-    print_status "Operating System:"
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        echo "  ✓ $PRETTY_NAME"
-    else
-        echo "  ✗ Unable to detect OS"
-    fi
-    
-    # Check RAM
-    print_status "Memory (RAM):"
-    total_mem=$(free -m | awk '/^Mem:/{print $2}')
-    if [ $total_mem -gt 1000 ]; then
-        echo "  ✓ ${total_mem}MB (Recommended: 1GB+)"
-    else
-        echo "  ⚠ ${total_mem}MB (Recommended: 1GB+)"
-    fi
-    
-    # Check Disk Space
-    print_status "Disk Space:"
-    disk_space=$(df -h / | awk 'NR==2 {print $4}')
-    echo "  ✓ $disk_space available"
-    
-    # Check dependencies
-    print_status "Checking dependencies:"
-    
-    declare -A deps=(
-        ["curl"]="curl"
-        ["wget"]="wget"
-        ["unzip"]="unzip"
-        ["git"]="git"
-        ["node"]="nodejs"
-        ["npm"]="npm"
-    )
-    
-    for cmd in "${!deps[@]}"; do
-        if command -v $cmd &> /dev/null; then
-            echo "  ✓ ${deps[$cmd]}"
-        else
-            echo "  ✗ ${deps[$cmd]} (Missing)"
-        fi
-    done
-    
-    echo ""
-    echo -e "${GREEN}System check completed!${NC}"
-    echo ""
-    read -p "Press Enter to continue..."
-}
+# Main execution
+welcome_animation
 
-# Main script execution
-main() {
-    # Check if running as root
-    if [ "$EUID" -ne 0 ]; then 
-        print_warning "This script requires sudo privileges for installation"
-        print_warning "Some operations may fail without proper permissions"
-        read -p "Continue anyway? (y/n): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Exiting..."
-            exit 1
-        fi
-    fi
+while true; do
+    show_menu
+    read -r choice
     
-    while true; do
-        show_menu
-        read -p "Enter your choice [1-4]: " choice
-        
-        case $choice in
-            1)
-                blueprint_fresh_install
-                read -p "Press Enter to continue..."
-                ;;
-            2)
-                reinstall_blueprint
-                read -p "Press Enter to continue..."
-                ;;
-            3)
-                check_system
-                ;;
-            4)
-                print_header "THANK YOU FOR USING BLUEPRINT INSTALLER"
-                echo -e "${GREEN}Made by Jishnu${NC}"
-                echo ""
-                exit 0
-                ;;
-            *)
-                print_error "Invalid option! Please enter 1, 2, 3, or 4"
-                sleep 2
-                ;;
-        esac
-    done
-}
-
-# Check if script is being sourced or run directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi
+    case $choice in
+        1) install_nobita ;;
+        2) reinstall_nobita ;;
+        3) update_nobita ;;
+        0) 
+            echo -e "${GREEN}Exiting Blueprint Installer...${NC}"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${CYAN}           Thank you for using our tools!       ${NC}"
+            echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            sleep 2
+            exit 0 
+            ;;
+        *) 
+            print_error "Invalid option! Please choose between 0-3"
+            sleep 2
+            ;;
+    esac
+    
+    echo -e ""
+    read -p "$(echo -e "${YELLOW}Press Enter to continue...${NC}")" -n 1
+done
