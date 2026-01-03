@@ -7,26 +7,31 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# UI Elements
+CHECKMARK="✓"
+CROSSMARK="✗"
+ARROW="➤"
 
 # Function to print section headers
 print_header() {
-    echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} $1 ${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+    echo -e "\n${MAGENTA}╔══════════════════════════════════════════╗${NC}"
+    echo -e "${MAGENTA}║${NC}${CYAN}   $1${NC}"
+    echo -e "${MAGENTA}╚══════════════════════════════════════════╝${NC}"
 }
 
-# Function to print status messages
 print_status() {
-    echo -e "${YELLOW}⏳ $1...${NC}"
+    echo -e "${YELLOW}${ARROW} $1...${NC}"
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}${CHECKMARK} $1${NC}"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}${CROSSMARK} $1${NC}"
 }
 
 # Function to check if command succeeded
@@ -40,78 +45,71 @@ check_success() {
     fi
 }
 
-# Clear screen and show welcome message
+# Clear screen and show welcome
 clear
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}           PTERODACTYL WINGS SETUP               ${NC}"
-echo -e "${CYAN}              by Nobita-hosting                  ${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║${NC}${CYAN}     PTERODACTYL WINGS INSTALLER     ${NC}${BLUE}║${NC}"
+echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
-    print_error "Please run this script as root or with sudo"
+    print_error "Please run as root"
     exit 1
 fi
 
-print_header "STARTING WINGS INSTALLATION PROCESS"
-
 # ------------------------
-# 1. Docker install (stable)
+# 1. Docker install
 # ------------------------
 print_header "INSTALLING DOCKER"
 print_status "Installing Docker"
-curl -sSL https://get.docker.com/ | CHANNEL=stable bash > /dev/null 2>&1
-check_success "Docker installed" "Failed to install Docker"
+curl -sSL https://get.docker.com/ | CHANNEL=stable bash
+check_success "Docker installed"
 
-print_status "Enabling and starting Docker service"
+print_status "Starting Docker service"
 sudo systemctl enable --now docker > /dev/null 2>&1
-check_success "Docker service started" "Failed to start Docker service"
+check_success "Docker service started"
 
 # ------------------------
 # 2. Update GRUB
 # ------------------------
-print_header "UPDATING SYSTEM CONFIGURATION"
+print_header "UPDATING SYSTEM"
 GRUB_FILE="/etc/default/grub"
 if [ -f "$GRUB_FILE" ]; then
-    print_status "Updating GRUB configuration"
+    print_status "Updating GRUB"
     sudo sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="swapaccount=1"/' $GRUB_FILE
     sudo update-grub > /dev/null 2>&1
-    check_success "GRUB configuration updated" "Failed to update GRUB"
-else
-    print_status "GRUB configuration file not found, skipping"
+    check_success "GRUB updated"
 fi
 
 # ------------------------
 # 3. Wings install
 # ------------------------
 print_header "INSTALLING WINGS"
-print_status "Creating Pterodactyl directory"
+print_status "Creating directories"
 sudo mkdir -p /etc/pterodactyl
-check_success "Directory created" "Failed to create directory"
+check_success "Directories created"
 
-print_status "Detecting system architecture"
+print_status "Detecting architecture"
 ARCH=$(uname -m)
 if [ "$ARCH" == "x86_64" ]; then 
     ARCH="amd64"
-    print_success "Detected AMD64 architecture"
 else 
     ARCH="arm64"
-    print_success "Detected ARM64 architecture"
 fi
 
 print_status "Downloading Wings"
 curl -L -o /usr/local/bin/wings "https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_$ARCH" > /dev/null 2>&1
-check_success "Wings downloaded" "Failed to download Wings"
+check_success "Wings downloaded"
 
-print_status "Setting executable permissions"
+print_status "Setting permissions"
 sudo chmod u+x /usr/local/bin/wings
-check_success "Permissions set" "Failed to set permissions"
+check_success "Permissions set"
 
 # ------------------------
 # 4. Wings service
 # ------------------------
-print_header "CONFIGURING WINGS SERVICE"
-print_status "Creating systemd service file"
+print_header "CONFIGURING SERVICE"
+print_status "Creating service file"
 WINGS_SERVICE_FILE="/etc/systemd/system/wings.service"
 sudo tee $WINGS_SERVICE_FILE > /dev/null <<EOF
 [Unit]
@@ -134,29 +132,27 @@ RestartSec=5s
 [Install]
 WantedBy=multi-user.target
 EOF
-check_success "Service file created" "Failed to create service file"
+check_success "Service file created"
 
-print_status "Reloading systemd daemon"
+print_status "Reloading systemd"
 sudo systemctl daemon-reload > /dev/null 2>&1
-check_success "Systemd daemon reloaded" "Failed to reload systemd"
+check_success "Systemd reloaded"
 
-print_status "Enabling Wings service"
+print_status "Enabling service"
 sudo systemctl enable wings > /dev/null 2>&1
-check_success "Wings service enabled" "Failed to enable Wings service"
+check_success "Service enabled"
 
 # ------------------------
 # 5. SSL Certificate
 # ------------------------
-print_header "GENERATING SSL CERTIFICATE"
-print_status "Creating certificate directory"
+print_header "GENERATING SSL"
+print_status "Creating certificate"
 sudo mkdir -p /etc/certs/wing
 cd /etc/certs/wing || exit
-
-print_status "Generating self-signed SSL certificate"
 sudo openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
 -subj "/C=NA/ST=NA/L=NA/O=NA/CN=Generic SSL Certificate" \
 -keyout privkey.pem -out fullchain.pem > /dev/null 2>&1
-check_success "SSL certificate generated" "Failed to generate SSL certificate"
+check_success "SSL certificate generated"
 
 # ------------------------
 # 6. 'wing' helper command
